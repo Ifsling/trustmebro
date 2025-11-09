@@ -1,12 +1,15 @@
-type Props = { params: { gamename: string } }
+import { use } from "react"
+import GameClient from "./runtime"
 
-export default function GameRuntime({ params }: Props) {
-  return (
-    <div className="min-h-dvh w-full bg-background p-6 text-foreground">
-      <h1 className="text-2xl font-semibold">
-        Playing: {decodeURIComponent(params.gamename)}
-      </h1>
-      <div className="mt-6 h-[70vh] rounded-2xl border border-default-200 bg-content1" />
-    </div>
-  )
+export default function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ gamename: string }>
+  searchParams: Promise<{ session?: string }>
+}) {
+  const { gamename } = use(params)
+  const { session } = use(searchParams)
+  const slug = decodeURIComponent(gamename || "")
+  return <GameClient gameSlug={slug} sessionId={session} />
 }

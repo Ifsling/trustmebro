@@ -1,10 +1,11 @@
 "use client"
 
+import { createSupabaseBrowser } from "@/lib/supabase/client"
 import logoFullDark from "@/public/images/logo-full-dark.png"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 type Item = { href: string; label: string }
 
@@ -12,16 +13,59 @@ const NAV: Item[] = [
   { href: "/profile/dashboard", label: "Dashboard" },
   { href: "/profile/games", label: "Games" },
   { href: "/profile/withdraw", label: "Withdraw" },
+  { href: "/wallet/deposit", label: "Wallet / Deposit" },
 ]
 
 export default function ProfileSidebar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const [balance, setBalance] = useState<number | null>(null)
 
   const activeIdx = useMemo(() => {
     const idx = NAV.findIndex((i) => pathname.startsWith(i.href))
     return idx === -1 ? 0 : idx
   }, [pathname])
+
+  useEffect(() => {
+    const sb = createSupabaseBrowser()
+    let mounted = true
+    ;(async () => {
+      const {
+        data: { user },
+      } = await sb.auth.getUser()
+      if (!user) return
+      const { data } = await sb
+        .from("wallets")
+        .select("balance")
+        .eq("user_id", user.id)
+        .single()
+      if (mounted) setBalance(data?.balance ?? 0)
+    })()
+    const channel = sb
+      .channel("wallet-watch")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "wallet_transactions" },
+        async () => {
+          const {
+            data: { user },
+          } = await sb.auth.getUser()
+          if (!user) return
+          const { data } = await sb
+            .from("wallets")
+            .select("balance")
+            .eq("user_id", user.id)
+            .single()
+          setBalance(data?.balance ?? 0)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      mounted = false
+      sb.removeChannel(channel)
+    }
+  }, [])
 
   return (
     <>
@@ -69,7 +113,22 @@ export default function ProfileSidebar() {
           </button>
         </div>
 
-        <nav className="mt-2 flex flex-col">
+        {/* wallet summary */}
+        <div className="mx-3 mt-3 rounded-lg border border-default-200 bg-content1 p-3">
+          <div className="text-xs text-foreground/60">Wallet Balance</div>
+          <div className="mt-1 text-xl font-semibold">
+            {balance === null ? "—" : balance.toLocaleString()}
+          </div>
+          <Link
+            href="/wallet/deposit"
+            className="mt-2 inline-block rounded-md bg-warning px-3 py-1 text-xs font-medium text-black"
+            onClick={() => setOpen(false)}
+          >
+            Deposit
+          </Link>
+        </div>
+
+        <nav className="mt-3 flex flex-col">
           {NAV.map((item, i) => (
             <Link
               key={item.href}
@@ -88,13 +147,17 @@ export default function ProfileSidebar() {
           <div className="mt-auto" />
         </nav>
 
-        {/* bottom profile button */}
+        {/* bottom live wallet + profile button */}
         <div className="absolute bottom-0 left-0 right-0 border-t border-default-200 p-4">
+          <div className="mb-2 text-xs text-foreground/60">Tokens</div>
+          <div className="mb-3 text-lg font-semibold">
+            {balance === null ? "—" : balance.toLocaleString()}
+          </div>
           <Link
-            href="/profile/settings"
+            href="/profile/profile"
             className={[
               "block rounded-lg px-3 py-2 text-sm",
-              pathname.startsWith("/profile/settings")
+              pathname.startsWith("/profile/profile")
                 ? "bg-warning/20"
                 : "hover:bg-default-100",
             ].join(" ")}
