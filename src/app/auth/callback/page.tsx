@@ -17,7 +17,7 @@ export default function AuthCallback() {
       }
       const supabase = createSupabaseBrowser()
       const { error } = await supabase.auth.exchangeCodeForSession(code)
-      router.replace(error ? "/auth?error=1" : "/dashboard")
+      router.replace(error ? "/auth?error=1" : "/profile/dashboard")
     }
     doExchange()
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -4,8 +4,8 @@ import contactUsImage from "@/public/images/contact-us.png"
 import { Button, Input, Textarea } from "@heroui/react"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import Footer from "../components/Footer"
-import NavbarSection from "../components/Navbar"
+import Footer from "../../components/Footer"
+import NavbarSection from "../../components/Navbar"
 
 export default function ContactPage() {
   return (

@@ -1,9 +1,9 @@
 "use client"
 
-import Footer from "../components/Footer"
-import NavbarSection from "../components/Navbar"
 import { Accordion, AccordionItem } from "@heroui/react"
 import { motion } from "framer-motion"
+import Footer from "../../components/Footer"
+import NavbarSection from "../../components/Navbar"
 
 export default function FAQPage() {
   return (

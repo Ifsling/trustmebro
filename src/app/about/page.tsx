@@ -4,8 +4,8 @@ import aboutUsImage from "@/public/images/about-us.png"
 import { Button, Card, CardBody } from "@heroui/react"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import Footer from "../components/Footer"
-import NavbarSection from "../components/Navbar"
+import Footer from "../../components/Footer"
+import NavbarSection from "../../components/Navbar"
 
 export default function AboutPage() {
   return (

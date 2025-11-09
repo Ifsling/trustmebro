@@ -1,6 +1,6 @@
 import { FC } from "react"
-import HeroPage from "../components/HeroPage"
-import NavbarSection from "../components/Navbar"
+import HeroPage from "../../components/HeroPage"
+import NavbarSection from "../../components/Navbar"
 
 const LandingPage: FC = () => {
   return (
