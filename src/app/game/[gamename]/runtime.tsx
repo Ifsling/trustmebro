@@ -18,20 +18,57 @@ export default function GameClient({
   return (
     <GameShell
       gameSlug={gameSlug}
-      renderGame={({ onWin, onLose }) => {
+      sessionId={sessionId}
+      renderGame={({ onWin, onLose, onChargeRound }) => {
         switch (gameSlug) {
           case "reaction-duel":
-            return <ReactionDuelGame onWin={onWin} onLose={onLose} />
+            return (
+              <ReactionDuelGame
+                onWin={onWin}
+                onLose={onLose}
+                onChargeRound={onChargeRound}
+              />
+            )
           case "stop-the-timer":
-            return <StopTimerGame onWin={onWin} onLose={onLose} />
+            return (
+              <StopTimerGame
+                onWin={onWin}
+                onLose={onLose}
+                // onChargeRound={onChargeRound}
+              />
+            )
           case "archery-2d":
-            return <Archery2DGame onWin={onWin} onLose={onLose} />
+            return (
+              <Archery2DGame
+                onWin={onWin}
+                onLose={onLose}
+                // onChargeRound={onChargeRound}
+              />
+            )
           case "falling-strikes":
-            return <FallingStrikesGame onWin={onWin} onLose={onLose} />
+            return (
+              <FallingStrikesGame
+                onWin={onWin}
+                onLose={onLose}
+                // onChargeRound={onChargeRound}
+              />
+            )
           case "bullet-dodge":
-            return <BulletDodgeGame onWin={onWin} onLose={onLose} />
+            return (
+              <BulletDodgeGame
+                onWin={onWin}
+                onLose={onLose}
+                // onChargeRound={onChargeRound}
+              />
+            )
           case "target-shooter":
-            return <TargetShooterGame onWin={onWin} onLose={onLose} />
+            return (
+              <TargetShooterGame
+                onWin={onWin}
+                onLose={onLose}
+                // onChargeRound={onChargeRound}
+              />
+            )
           default:
             return (
               <div className="flex h-[70vh] items-center justify-center">

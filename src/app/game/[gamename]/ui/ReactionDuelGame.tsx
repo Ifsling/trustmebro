@@ -1,16 +1,22 @@
 "use client"
+
 import { useEffect, useRef, useState } from "react"
+
+type Phase = "ready" | "wait" | "go" | "done"
 
 export default function ReactionDuelGame({
   onWin,
   onLose,
+  onChargeRound,
 }: {
   onWin: () => void
   onLose: () => void
+  onChargeRound: () => Promise<void>
 }) {
-  type Phase = "ready" | "wait" | "go" | "done"
   const [phase, setPhase] = useState<Phase>("ready")
   const [rt, setRt] = useState<number | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
 
   const startRef = useRef<number>(0)
   const timeoutRef = useRef<number | null>(null)
@@ -18,25 +24,40 @@ export default function ReactionDuelGame({
 
   useEffect(() => {
     startRound()
-    return cleanup
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function cleanup() {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    timeoutRef.current = null
-  }
-
-  function startRound() {
-    settledRef.current = false
-    setRt(null)
-    setPhase("wait")
-    cleanup()
+  function scheduleGo() {
     const delay = 800 + Math.random() * 1800
     timeoutRef.current = window.setTimeout(() => {
       setPhase("go")
       startRef.current = performance.now()
     }, delay) as unknown as number
+  }
+
+  function startRound() {
+    settledRef.current = false
+    setRt(null)
+    setErr(null)
+    setPhase("wait")
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    scheduleGo()
+  }
+
+  async function replay() {
+    setLoading(true)
+    setErr(null)
+    try {
+      await onChargeRound() // debit tokens for this round
+      startRound()
+    } catch (e: any) {
+      setErr(e?.message ?? "Unable to debit for round")
+    } finally {
+      setLoading(false)
+    }
   }
 
   function finish(win: boolean, reaction?: number) {
@@ -60,11 +81,11 @@ export default function ReactionDuelGame({
   }
 
   const containerCls =
-    "flex h-[70vh] select-none items-center justify-center rounded-xl border cursor-pointer " +
+    "flex h-[70vh] select-none items-center justify-center rounded-xl border cursor-pointer transition-colors " +
     (phase === "wait"
-      ? "bg-danger/10"
+      ? "bg-red-500/10"
       : phase === "go"
-      ? "bg-success/20"
+      ? "bg-green-500/20"
       : "bg-content1")
 
   return (
@@ -83,9 +104,7 @@ export default function ReactionDuelGame({
                   {Math.round(rt)} ms
                 </div>
                 <div className="text-xs text-foreground/60">
-                  {rt <= 250
-                    ? "Win threshold: ≤ 250 ms"
-                    : "Too slow: >250 ms"}
+                  {rt <= 250 ? "Win threshold: ≤ 250 ms" : "Too slow: > 250 ms"}
                 </div>
               </>
             ) : (
@@ -93,15 +112,19 @@ export default function ReactionDuelGame({
                 Too early!
               </div>
             )}
+
+            {err && <div className="text-xs text-danger">{err}</div>}
+
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation()
-                startRound()
+                replay()
               }}
-              className="mt-3 rounded-lg bg-warning px-4 py-2 text-sm font-medium text-black"
+              disabled={loading}
+              className="mt-3 rounded-lg bg-warning px-4 py-2 text-sm font-medium text-black disabled:opacity-60"
             >
-              Replay
+              {loading ? "Debiting…" : "Replay (costs tokens)"}
             </button>
           </div>
         )}

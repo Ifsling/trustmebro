@@ -19,7 +19,11 @@ export async function lockStake(gameSlug: string, stake: number) {
   return { sessionId: row.session_id as string, balance: Number(row.balance) }
 }
 
-export async function settleClient(sessionId: string, won: boolean, payout: number) {
+export async function settleClient(
+  sessionId: string,
+  won: boolean,
+  payout: number
+) {
   const sb = createSupabaseBrowser()
   const { data, error } = await sb.rpc("game_settle_client", {
     p_session: sessionId,
@@ -28,5 +32,18 @@ export async function settleClient(sessionId: string, won: boolean, payout: numb
   })
   if (error) throw new Error(error.message)
   const row = Array.isArray(data) ? data[0] : data
-  return { status: row.status as "won" | "lost" | "started", balance: Number(row.balance) }
+  return {
+    status: row.status as "won" | "lost" | "started",
+    balance: Number(row.balance),
+  }
+}
+
+export async function debitForRound(amount: number) {
+  const sb = createSupabaseBrowser()
+  const { data, error } = await sb.rpc("wallet_debit_for_round", {
+    p_amount: amount,
+  })
+  if (error) throw new Error(error.message || "round debit failed")
+  const row = Array.isArray(data) ? data[0] : data
+  return Number(row?.balance ?? 0)
 }
