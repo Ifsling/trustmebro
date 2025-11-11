@@ -8,15 +8,32 @@ export async function purchaseTokens(amount: number) {
   return Number(row?.balance ?? 0)
 }
 
+export async function getBalance() {
+  const sb = createSupabaseBrowser()
+  const { data, error } = await sb.from("wallets").select("balance").single()
+  if (error) throw new Error(error.message || "balance fetch failed")
+  return Number(data?.balance ?? 0)
+}
+
 export async function lockStake(gameSlug: string, stake: number) {
   const sb = createSupabaseBrowser()
   const { data, error } = await sb.rpc("game_lock_for_game", {
     p_game: gameSlug,
     p_stake: stake,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(error.message || "lock failed")
   const row = Array.isArray(data) ? data[0] : data
   return { sessionId: row.session_id as string, balance: Number(row.balance) }
+}
+
+export async function debitForRound(amount: number) {
+  const sb = createSupabaseBrowser()
+  const { data, error } = await sb.rpc("wallet_debit_for_round", {
+    p_amount: amount,
+  })
+  if (error) throw new Error(error.message || "round debit failed")
+  const row = Array.isArray(data) ? data[0] : data
+  return Number(row?.balance ?? 0)
 }
 
 export async function settleClient(
@@ -30,20 +47,10 @@ export async function settleClient(
     p_won: won,
     p_payout: payout,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(error.message || "settle failed")
   const row = Array.isArray(data) ? data[0] : data
   return {
     status: row.status as "won" | "lost" | "started",
     balance: Number(row.balance),
   }
-}
-
-export async function debitForRound(amount: number) {
-  const sb = createSupabaseBrowser()
-  const { data, error } = await sb.rpc("wallet_debit_for_round", {
-    p_amount: amount,
-  })
-  if (error) throw new Error(error.message || "round debit failed")
-  const row = Array.isArray(data) ? data[0] : data
-  return Number(row?.balance ?? 0)
 }

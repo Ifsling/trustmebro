@@ -2,9 +2,14 @@
 
 import BidModal from "@/components/BidModal"
 import { createSupabaseBrowser } from "@/lib/supabase/client"
-import { debitForRound, lockStake, settleClient } from "@/lib/wallet"
-import { Button, Chip } from "@heroui/react"
-import { JSX, useMemo, useState } from "react"
+import {
+  debitForRound,
+  getBalance,
+  lockStake,
+  settleClient,
+} from "@/lib/wallet"
+import { Button, Chip, Snippet } from "@heroui/react"
+import { JSX, useEffect, useMemo, useState } from "react"
 
 type RenderArgs = {
   onWin: () => void
@@ -21,33 +26,63 @@ export default function GameShell({
   sessionId?: string
   renderGame: (a: RenderArgs) => JSX.Element
 }) {
-  const sb = useMemo(createSupabaseBrowser, [])
+  useMemo(createSupabaseBrowser, []) // ensure browser client init once
+
   const [open, setOpen] = useState(!initialSessionId)
   const [sessionId, setSessionId] = useState<string | null>(
     initialSessionId ?? null
   )
-  const [balance, setBalance] = useState<number | null>(null)
+  const [balance, setBalance] = useState<number>(0)
   const [stake, setStake] = useState<number>(0)
+  const [err, setErr] = useState<string | null>(null)
+
+  useEffect(() => {
+    getBalance()
+      .then(setBalance)
+      .catch(() => setBalance(0))
+  }, [])
 
   async function start(stakeAmount: number) {
-    const { sessionId, balance } = await lockStake(gameSlug, stakeAmount)
-    setSessionId(sessionId)
-    setBalance(balance)
-    setStake(stakeAmount)
+    setErr(null)
+    if (stakeAmount <= 0) {
+      setErr("Stake must be > 0")
+      return
+    }
+    if (stakeAmount > balance) {
+      setErr("Insufficient balance")
+      return
+    }
+    try {
+      const { sessionId, balance: b } = await lockStake(gameSlug, stakeAmount)
+      setSessionId(sessionId)
+      setBalance(b)
+      setStake(stakeAmount)
+    } catch (e: any) {
+      setErr(e?.message ?? "Failed to start")
+    }
   }
 
   async function onChargeRound() {
-    // charge the same stake for each replay
-    const b = await debitForRound(stake)
-    setBalance(b)
+    setErr(null)
+    try {
+      const b = await debitForRound(stake)
+      setBalance(b)
+    } catch (e: any) {
+      setErr(e?.message ?? "Debit failed")
+      throw e
+    }
   }
 
   async function settle(win: boolean) {
     if (!sessionId) return
     const mult = win ? 1.2 + Math.random() * 1.7 : 1
     const payout = win ? Math.ceil(stake * mult) : 0
-    const { balance } = await settleClient(sessionId, win, payout)
-    setBalance(balance)
+    try {
+      const { balance: b } = await settleClient(sessionId, win, payout)
+      setBalance(b)
+    } catch (e: any) {
+      setErr(e?.message ?? "Settle failed")
+    }
   }
 
   return (
@@ -55,9 +90,17 @@ export default function GameShell({
       <header className="mb-3 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Playing: {gameSlug}</h1>
         <Chip variant="flat" color="default">
-          Balance: {balance ?? "—"}
+          Balance: {balance}
         </Chip>
       </header>
+
+      {err && (
+        <div className="mb-3">
+          <Snippet hideSymbol color="danger" variant="flat">
+            {err}
+          </Snippet>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-default-200 bg-content1 p-2">
         {sessionId ? (
@@ -73,7 +116,6 @@ export default function GameShell({
         )}
       </div>
 
-      {/* Dev helpers; remove later */}
       {sessionId && (
         <div className="mt-3 flex gap-3">
           <Button size="sm" onPress={() => settle(false)}>
@@ -88,9 +130,10 @@ export default function GameShell({
       <BidModal
         open={open}
         onClose={() => setOpen(false)}
+        maxStake={balance}
         onConfirm={async (s) => {
           await start(s)
-          setOpen(false)
+          if (s > 0 && s <= balance) setOpen(false)
         }}
       />
     </div>

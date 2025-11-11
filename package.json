@@ -12,6 +12,7 @@
     "@reduxjs/toolkit": "^2.10.1",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.80.0",
+    "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.24",
     "howler": "^2.2.4",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
