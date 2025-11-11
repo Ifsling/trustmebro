@@ -9,6 +9,7 @@ import {
   settleClient,
 } from "@/lib/wallet"
 import { Button, Chip, Snippet } from "@heroui/react"
+import { useRouter } from "next/navigation"
 import { JSX, useEffect, useMemo, useState } from "react"
 
 type RenderArgs = {
@@ -26,6 +27,7 @@ export default function GameShell({
   sessionId?: string
   renderGame: (a: RenderArgs) => JSX.Element
 }) {
+  const router = useRouter()
   useMemo(createSupabaseBrowser, []) // ensure browser client init once
 
   const [open, setOpen] = useState(!initialSessionId)
@@ -123,6 +125,13 @@ export default function GameShell({
           </Button>
           <Button size="sm" color="success" onPress={() => settle(true)}>
             Force Win
+          </Button>
+          <Button
+            size="sm"
+            color="success"
+            onPress={() => router.push("/profile/games")}
+          >
+            Go to Menu
           </Button>
         </div>
       )}
