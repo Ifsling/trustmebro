@@ -13,13 +13,15 @@ const NAV: Item[] = [
   { href: "/profile/dashboard", label: "Dashboard" },
   { href: "/profile/games", label: "Games" },
   { href: "/profile/withdraw", label: "Withdraw" },
-  { href: "/wallet/deposit", label: "Wallet / Deposit" },
+  { href: "/profile/wallet/deposit", label: "Wallet / Deposit" },
 ]
 
 export default function ProfileSidebar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [balance, setBalance] = useState<number | null>(null)
+  const [fullName, setFullName] = useState<string | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
   const activeIdx = useMemo(() => {
     const idx = NAV.findIndex((i) => pathname.startsWith(i.href))
@@ -29,18 +31,31 @@ export default function ProfileSidebar() {
   useEffect(() => {
     const sb = createSupabaseBrowser()
     let mounted = true
-    ;(async () => {
+
+    const loadWalletAndProfile = async () => {
       const {
         data: { user },
       } = await sb.auth.getUser()
       if (!user) return
-      const { data } = await sb
-        .from("wallets")
-        .select("balance")
-        .eq("user_id", user.id)
-        .single()
-      if (mounted) setBalance(data?.balance ?? 0)
-    })()
+
+      const [{ data: wallet }, { data: profile }] = await Promise.all([
+        sb.from("wallets").select("balance").eq("user_id", user.id).single(),
+        sb
+          .from("profiles")
+          .select("full_name, avatar_url")
+          .eq("id", user.id)
+          .single(),
+      ])
+
+      if (!mounted) return
+
+      setBalance(wallet?.balance ?? 0)
+      setFullName(profile?.full_name ?? null)
+      setAvatarUrl(profile?.avatar_url ?? null)
+    }
+
+    loadWalletAndProfile()
+
     const channel = sb
       .channel("wallet-watch")
       .on(
@@ -120,7 +135,7 @@ export default function ProfileSidebar() {
             {balance === null ? "—" : balance.toLocaleString()}
           </div>
           <Link
-            href="/wallet/deposit"
+            href="/profile/wallet/deposit"
             className="mt-2 inline-block rounded-md bg-warning px-3 py-1 text-xs font-medium text-black"
             onClick={() => setOpen(false)}
           >
@@ -157,13 +172,36 @@ export default function ProfileSidebar() {
             href="/profile/settings"
             className={[
               "block rounded-lg px-3 py-2 text-sm",
-              pathname.startsWith("/profile/profile")
+              pathname.startsWith("/profile/settings")
                 ? "bg-warning/20"
                 : "hover:bg-default-100",
             ].join(" ")}
             onClick={() => setOpen(false)}
           >
-            Profile & Settings
+            <div className="flex items-center gap-3">
+              <div className="relative h-8 w-8 overflow-hidden rounded-full bg-default-200">
+                {avatarUrl ? (
+                  <Image
+                    src={avatarUrl}
+                    alt="Avatar"
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs text-foreground/50">
+                    ?
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">
+                  {fullName || "Profile & Settings"}
+                </span>
+                <span className="text-[11px] text-foreground/60">
+                  Manage name & avatar
+                </span>
+              </div>
+            </div>
           </Link>
         </div>
       </aside>

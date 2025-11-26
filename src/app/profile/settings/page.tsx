@@ -1,93 +1,197 @@
 "use client"
 
 import { createSupabaseBrowser } from "@/lib/supabase/client"
-import { Button } from "@heroui/react"
-import type { User } from "@supabase/supabase-js" // adjust import if needed
+import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
-export default function ProfileSettings() {
-  const [user, setUser] = useState<User | null>(null)
-  const [fullName, setFullName] = useState("")
+export default function SettingsPage() {
+  const supabase = createSupabaseBrowser()
   const router = useRouter()
-  const supabase = createSupabaseBrowser() // make sure this is sync
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [loading, setLoading] = useState(true)
+  const [updating, setUpdating] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  // Form State
+  const [fullName, setFullName] = useState("")
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  // 1. Fetch initial profile data
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        router.replace("/auth")
-        return
+    const getProfile = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (!user) {
+          router.push("/login")
+          return
+        }
+
+        setUserId(user.id)
+
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("full_name, avatar_url")
+          .eq("id", user.id)
+          .single()
+
+        if (error && error.code !== "PGRST116") {
+          throw error
+        }
+
+        if (data) {
+          setFullName(data.full_name || "")
+          setAvatarUrl(data.avatar_url)
+        }
+      } catch (error) {
+        console.error("Error loading user data!", error)
+      } finally {
+        setLoading(false)
       }
-      setUser(data.user)
-      const nameFromMeta =
-        (data.user.user_metadata as { full_name?: string } | null)?.full_name ??
-        ""
-      setFullName(nameFromMeta)
-    })
+    }
+
+    getProfile()
   }, [supabase, router])
 
-  if (!user) return null
+  // 2. Handle Image Selection
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      return
+    }
+    const file = event.target.files[0]
+    setAvatarFile(file)
+    setPreviewUrl(URL.createObjectURL(file)) // Immediate local preview
+  }
+
+  // 3. Save Changes
+  const updateProfile = async () => {
+    try {
+      setUpdating(true)
+      if (!userId) throw new Error("No user")
+
+      let finalAvatarUrl = avatarUrl
+
+      // A. If a new file was selected, upload it
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split(".").pop()
+        const fileName = `${userId}-${Math.random()}.${fileExt}`
+        const filePath = `${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from("avatars")
+          .upload(filePath, avatarFile)
+
+        if (uploadError) throw uploadError
+
+        // Get public URL
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("avatars").getPublicUrl(filePath)
+
+        finalAvatarUrl = publicUrl
+      }
+
+      // B. Update Profile Table
+      const updates = {
+        id: userId,
+        full_name: fullName,
+        avatar_url: finalAvatarUrl,
+        updated_at: new Date().toISOString(),
+      }
+
+      const { error } = await supabase.from("profiles").upsert(updates)
+
+      if (error) throw error
+
+      alert("Profile updated successfully!")
+      router.refresh() // Refresh server components if needed
+    } catch (error) {
+      alert("Error updating the data!")
+      console.error(error)
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  if (loading) return <div className="p-8">Loading settings...</div>
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Profile &amp; Settings</h1>
+    <div className="mx-auto max-w-2xl p-4 md:p-8">
+      <h1 className="mb-8 text-2xl font-bold">Profile & Settings</h1>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-2xl border border-default-200 bg-background/80 p-6 backdrop-blur">
-          <div className="text-sm text-foreground/60">Avatar</div>
-          <div className="mt-3 flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full bg-default-200" />
-            <button className="rounded-lg border px-3 py-1.5 text-sm">
-              Change
-            </button>
+      <div className="rounded-xl border border-default-200 bg-background p-6 shadow-sm">
+        {/* Avatar Section */}
+        <div className="mb-8 flex flex-col items-center gap-4 sm:flex-row">
+          <div className="relative h-24 w-24 overflow-hidden rounded-full border border-default-200 bg-default-100">
+            {previewUrl || avatarUrl ? (
+              <Image
+                src={previewUrl || avatarUrl || ""}
+                alt="Avatar"
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-2xl text-default-400">
+                {(fullName?.[0] || "U").toUpperCase()}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <h3 className="font-medium">Profile Photo</h3>
+            <div className="text-xs text-default-500">
+              Recommended: Square JPG, PNG. Max 2MB.
+            </div>
+            <div>
+              <input
+                type="file"
+                id="avatar"
+                accept="image/*"
+                onChange={handleFileChange}
+                ref={fileInputRef}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-md border border-default-300 px-3 py-1.5 text-sm font-medium hover:bg-default-100"
+              >
+                Upload New Photo
+              </button>
+            </div>
           </div>
         </div>
 
-        <form
-          className="rounded-2xl border border-default-200 bg-background/80 p-6 backdrop-blur lg:col-span-2"
-          onSubmit={async (e) => {
-            e.preventDefault()
-            await supabase.auth.updateUser({
-              data: { full_name: fullName },
-            })
-          }}
-        >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="text-sm">
-              <span className="mb-1 block text-foreground/70">Full Name</span>
-              <input
-                className="w-full rounded-lg border bg-transparent px-3 py-2"
-                name="full_name"
-                placeholder="Your name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-              />
-            </label>
-            <label className="text-sm">
-              <span className="mb-1 block text-foreground/70">Email</span>
-              <input
-                className="w-full cursor-not-allowed rounded-lg border bg-default-100 px-3 py-2"
-                defaultValue={user.email ?? ""}
-                disabled
-              />
-            </label>
-          </div>
-          <div className="mt-4 flex gap-3">
-            <button className="rounded-lg bg-warning px-4 py-2 text-sm font-medium text-black">
-              Save Changes
-            </button>
-            <Button
-              className="text-sm"
-              variant="bordered"
-              onPress={async () => {
-                await supabase.auth.signOut()
-                router.push("/")
-              }}
-            >
-              Sign out
-            </Button>
-          </div>
-        </form>
+        {/* Name Section */}
+        <div className="mb-6">
+          <label htmlFor="fullName" className="mb-2 block text-sm font-medium">
+            Full Name
+          </label>
+          <input
+            id="fullName"
+            type="text"
+            value={fullName || ""}
+            onChange={(e) => setFullName(e.target.value)}
+            className="w-full rounded-lg border border-default-300 bg-transparent px-4 py-2 text-foreground focus:border-warning focus:outline-none focus:ring-1 focus:ring-warning"
+            placeholder="Enter your name"
+          />
+        </div>
+
+        {/* Save Button */}
+        <div className="flex justify-end pt-4">
+          <button
+            onClick={updateProfile}
+            disabled={updating}
+            className="rounded-lg bg-warning px-6 py-2.5 text-sm font-semibold text-black hover:bg-warning/90 disabled:opacity-50"
+          >
+            {updating ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
       </div>
     </div>
   )
