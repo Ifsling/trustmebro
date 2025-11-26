@@ -55,7 +55,7 @@ export default function HeroPage() {
               size="lg"
               radius="lg"
               className="px-6 font-medium"
-              href="#signup"
+              href="/auth"
               as={"a"}
             >
               Get Started

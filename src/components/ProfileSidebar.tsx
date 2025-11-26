@@ -154,7 +154,7 @@ export default function ProfileSidebar() {
             {balance === null ? "—" : balance.toLocaleString()}
           </div>
           <Link
-            href="/profile/profile"
+            href="/profile/settings"
             className={[
               "block rounded-lg px-3 py-2 text-sm",
               pathname.startsWith("/profile/profile")
