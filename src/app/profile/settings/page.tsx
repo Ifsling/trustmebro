@@ -1,6 +1,7 @@
 "use client"
 
 import { createSupabaseBrowser } from "@/lib/supabase/client"
+import { Button } from "@heroui/react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
@@ -192,6 +193,22 @@ export default function SettingsPage() {
             {updating ? "Saving..." : "Save Changes"}
           </button>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-danger-200 bg-background p-6 shadow-lg shadow-danger-200 mt-10">
+        <h1 className="font-bold">DANGER ZONE</h1>
+
+        <Button
+          className="w-full mt-3"
+          onPress={() => {
+            supabase.auth.signOut()
+            router.push("/")
+          }}
+          color="danger"
+          variant="ghost"
+        >
+          Log Out
+        </Button>
       </div>
     </div>
   )

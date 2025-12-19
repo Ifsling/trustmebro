@@ -116,7 +116,7 @@ export default function AboutPage() {
           >
             <div className="relative mx-auto aspect-[4/3] w-full max-w-xl overflow-hidden rounded-2xl border border-default-200 bg-content1 shadow-2xl">
               <Image
-                src={aboutUsImage}
+                src={aboutUsImage} 
                 alt="About our platform"
                 fill
                 className="object-cover"

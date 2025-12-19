@@ -59,7 +59,7 @@ export default function WithdrawPage() {
   const router = useRouter()
 
   const displayBalance = balance / 10
-  const minWithdraw = 50
+  const minWithdraw = 500
 
   useEffect(() => {
     const fetchBalance = async () => {

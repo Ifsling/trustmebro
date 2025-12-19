@@ -52,7 +52,9 @@ export default async function ProfileDashboard() {
 
   const total7DaysCents = last7Days.reduce((sum, d) => sum + d.cents, 0)
 
-  const winRate = 50 + (seededInt(todaySeed + 99) % 50) // 45–94 %
+  // UPDATED: Now generates a value between 93 and 99
+  const winRate = 93 + (seededInt(todaySeed + 99) % 7)
+
   const avgStakeCents =
     last7Days.length > 0
       ? Math.floor(
@@ -171,8 +173,7 @@ export default async function ProfileDashboard() {
             <div>
               <div className="text-sm font-medium">Earnings last 7 days</div>
               <div className="mt-1 text-xs text-foreground/60">
-                Bars scaled to your highest day. Hover via dev tools for exact
-                numbers if needed.
+                Bars scaled to your highest day.
               </div>
             </div>
           </div>
@@ -273,7 +274,6 @@ export default async function ProfileDashboard() {
 
       {/* Bottom row: activity + meta stats */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Recent activity (static scaffold) */}
         <div className="rounded-2xl border border-default-200 bg-background/80 p-6 backdrop-blur">
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium">Recent activity</div>
@@ -331,7 +331,6 @@ export default async function ProfileDashboard() {
           </div>
         </div>
 
-        {/* Meta stats / streak */}
         <div className="rounded-2xl border border-default-200 bg-background/80 p-6 backdrop-blur">
           <div className="text-sm font-medium">Consistency & streaks</div>
           <div className="mt-1 text-xs text-foreground/60">
